@@ -1,0 +1,301 @@
+---
+title: "Severe Weather Events in the United States from 1950-2011"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+        html_document:
+        keep_md: true
+
+---
+
+## Synopsis ##
+
+This report explores the NOAA Storm Database and answers some basic questions about severe weather events in the United States from 1950 to November 2011. 
+
+Specifically, this report identifies and displays the types of events that are: 
+
+ - The most harmful with respect to population health:
+
+        - Number of fatalities
+
+        - Number of injuries 
+
+ - The most harmful with respect to economic consequences:
+
+        - Amount of property damage
+
+        - Amount of crop damage
+
+Evaluating the most damaging weather events can help with disaster preparedness efforts and prioritization of resources. 
+
+NOAA categorizes weather events into [48 distinct types](https://www.ncdc.noaa.gov/stormevents/pd01016005curr.pdf). More information on NOAA's storm database can be found [here](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf). 
+
+
+## Data Processing ##
+
+### Loading in Libraries ###
+```{r libs}
+        options(scipen=999) #Prevents the numbers from being displayed in scientific notation
+
+        library(R.utils)
+        library(rmarkdown)
+        library(knitr)
+        library(tidyverse)
+        library(ggplot2)
+        library(gridExtra)
+
+# Adding a block that allows us to automatically save the figures in a folder to github
+# include = FALSE means this block won't be displayed
+
+        knitr::opts_chunk$set(echo = TRUE)
+        
+        knitr::opts_chunk$set( fig.path = "figures/fig-")
+        
+        Sys.setlocale("LC_TIME", "English")
+        
+
+```
+
+### Loading the data ###
+This chunk will cache its results and only re-evaluate when changes are present:
+
+```{r cachedchunk, cache=TRUE}
+
+#Source for cleaning process: https://www.coursera.org/learn/reproducible-research/discussions/weeks/4/threads/38y35MMiEeiERhLphT2-QA
+        
+
+#Read in the data:
+        temp <- tempfile()
+##Do the download once
+        if(!file.exists("/stormData.csv.bz2")){
+                download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", destfile="./stormData.csv.bz2")
+        }
+                            
+##Uncompress the file once
+        if(!file.exists("stormdata.csv"))
+        {
+                bunzip2("stormData.csv.bz2","stormdata.csv",remove=F)
+        }
+
+##Load the data
+        storm <- read.csv("stormdata.csv",header=TRUE,sep=",")
+```
+
+### Subsetting the data ###
+```{r dataprocess}
+#Only keep a subset of the variables we are interested in for the project:        
+        variables = c("EVTYPE","FATALITIES","INJURIES","PROPDMG", "PROPDMGEXP","CROPDMG","CROPDMGEXP")
+        storm_subset = storm[variables]
+
+```
+
+### Data Processing - Population Health ###
+This section aggregates the number of fatalities and injuries by event type and sorts the output into descending order, based on the total number of fatalities/injuries.
+```{r pophealth}
+        ##Aggregate the # of fatalities by event type and sort the output in descending order
+                #Make a mini-table of the total number of fatalities by event type:
+                num_fatalities = aggregate(FATALITIES~EVTYPE,data=storm_subset,FUN=sum,na.rm=TRUE)
+                #Put in descending order:
+                num_fatalities = num_fatalities[order(-num_fatalities$FATALITIES),] 
+                #Only list the ten most fatal event types:
+                num_fatalities = head(num_fatalities,10)
+        
+                #Create a new column that is a rank of 1-10:
+                num_fatalities = tibble::rowid_to_column(num_fatalities, "rank_fat")
+                
+                
+        ##Aggregate the # of injuries by event type and sort the output in descending order
+                #Make a mini-table of the number of injuries by event type:
+                num_injuries = aggregate(INJURIES~EVTYPE,data=storm_subset,FUN=sum,na.rm=TRUE)
+                #Put in descending order:
+                num_injuries = num_injuries[order(-num_injuries$INJURIES),]
+                #Only list the ten most injuries event types:
+                num_injuries = head(num_injuries,10)
+                
+                #Create a new column that is a rank of 1-10:
+                num_injuries = tibble::rowid_to_column(num_injuries, "rank_inj")
+```         
+
+### Data Processing - Economic Impact ###
+This section aggregates the total amount of property damage and crop damage by event type and sorts the output into descending order, based on the total amount of each type of economic impact. First, the amounts of property damage and crop damage need to be cleaned based on the symbol associated with each numeric value. The logic for coding the symbols has been previously investigated and documented [here](https://rstudio-pubs-static.s3.amazonaws.com/58957_37b6723ee52b455990e149edde45e5b6.html). 
+
+I used the following logic to code the symbols: 
+
+Symbol        | Change to Numeric Value:
+------------- | ------------------------
+b/B           | [value]*10^9
+m/M           | [value]*10^6
+k/K           | [value]*10^3
+h/H           | [value]*10^2
+0-8           | [value]*10^1
++             | [value]*1
+-/?/[blank]   | [value]*0
+
+```{r exponents}
+
+##convert the exponents into numeric value and thus calculate the property damage / crop damage
+#Source: https://rstudio-pubs-static.s3.amazonaws.com/58957_37b6723ee52b455990e149edde45e5b6.html
+
+        ##PROP DAMAGE##
+                #Billions:
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "B"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "B"] * (10^9)
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "b"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "b"] * (10^9)
+                #Millions:
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "M"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "M"] * (10^6)
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "m"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "m"] * (10^6)
+                #Thousands:
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "K"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "K"] * 1000
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "k"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "k"] * 1000
+                #Hundreds:
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "H"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "H"] * 100        
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "h"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "h"] * 100
+        
+                #Other exponentiated:
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "0"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "0"] * 10
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "1"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "1"] * 10
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "2"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "2"] * 10
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "3"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "3"] * 10
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "4"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "4"] * 10
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "5"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "5"] * 10
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "6"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "6"] * 10
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "7"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "7"] * 10
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "8"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "8"] * 10
+                
+                #Other symbols:
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "+"] = storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "+"] * 1
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "-"] = 0
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == "?"] = 0
+                storm_subset$PROPDMG[storm_subset$PROPDMGEXP == ""] = 0
+                
+        ##CROP DAMAGE##
+                #Billions:
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "B"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "B"] * (10^9)
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "b"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "b"] * (10^9)
+                #Millions:
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "M"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "M"] * (10^6)
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "m"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "m"] * (10^6)
+                #Thousands:
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "K"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "K"] * 1000
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "k"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "k"] * 1000
+                #Hundreds:
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "H"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "H"] * 100        
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "h"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "h"] * 100
+                
+                #Other exponentiated:
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "0"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "0"] * 10
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "1"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "1"] * 10
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "2"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "2"] * 10
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "3"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "3"] * 10
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "4"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "4"] * 10
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "5"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "5"] * 10
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "6"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "6"] * 10
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "7"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "7"] * 10
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "8"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "8"] * 10
+                
+                #Other symbols:
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "+"] = storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "+"] * 1
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "-"] = 0
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == "?"] = 0
+                storm_subset$CROPDMG[storm_subset$CROPDMGEXP == ""] = 0
+```
+
+```{r econimpact}
+##Aggregate property damage by event type and sort the output it in descending order
+        #Make a mini-table of the amount of property damage by event type:
+        num_prop = aggregate(PROPDMG~EVTYPE, data = storm_subset, FUN = sum, na.rm = TRUE)
+        #Put in descending order:
+        num_prop = num_prop[order(-num_prop$PROPDMG),]
+        #Only list the ten most damaging event types:
+        num_prop = head(num_prop,10)
+
+##Aggregate CROPerty damage by event type and sort the output it in descending order
+        #Make a mini-table of the amount of crop damage by event type:
+        num_CROP = aggregate(CROPDMG~EVTYPE, data = storm_subset, FUN = sum, na.rm = TRUE)
+        #Put in descending order:
+        num_CROP = num_CROP[order(-num_CROP$CROPDMG),]
+        #Only list the ten most damaging event types:
+        num_CROP = head(num_CROP,10)
+```        
+
+## Results ##
+
+
+
+### Population Health ##
+```{r ph}
+              
+        ##Make figures comparing the top 10 events that lead to the greatest number
+                #of fatalities and injuries
+                
+                #Make barplots for each type of harm (fatalities and injuries)
+                #Then, plot them side by side using the gridExtra package
+                
+                #Reorder the bars so they will present in descending order:
+                num_fatalities$EVTYPE = factor(num_fatalities$EVTYPE, levels = num_fatalities$EVTYPE[order(-num_fatalities$FATALITIES)])
+                
+                fat_bp = ggplot(data=num_fatalities, aes(x = EVTYPE, y = FATALITIES)) +
+                        geom_bar(stat="identity") +
+                        labs(title = "Fatalities") +
+                        labs(x = "Event Type", y = "Number of Fatalities") +
+                        theme(axis.text.x = element_text(size = 7, angle = 45)) + 
+                        geom_text(aes(label=FATALITIES), vjust=-0.3, size=3.5)
+
+                #Reorder the bars so they will present in descending order:
+                num_injuries$EVTYPE = factor(num_injuries$EVTYPE, levels = num_injuries$EVTYPE[order(-num_injuries$INJURIES)])
+                
+                inj_bp = ggplot(data=num_injuries, aes(x = EVTYPE, y = INJURIES)) +
+                        geom_bar(stat="identity") +
+                        labs(title = "Injuries") +
+                        labs(x = "Event Type", y = "Number of Injuries (Excluding Fatalities)") +
+                        theme(axis.text.x = element_text(size = 7, angle = 45)) + 
+                        geom_text(aes(label=INJURIES), vjust=-0.3, size=3.5)
+```
+
+### Figure 1 - Top 10 Events by Population Health Impact (1950-2011) ###
+
+```{r sidebyside_ph, fig.width=10, fig.align = "center"}
+                #This plots the figures side by side:
+                grid.arrange(fat_bp, inj_bp, nrow = 1)
+          
+```
+
+The figure above displays the top ten weather events that lead to the greatest population impact, defined by the total number of fatalities and total number of injuries, respectively. Tornados are the most harmful weather event in regards to population health. Tornados cause the largest number of fatalities and injuries across all 48 unique weather events. 
+
+### Economic Impact ###
+
+```{r ei}
+ 
+##Make figures comparing the top 10 events that lead to the largest amount 
+#of property and crop damage
+        #Make barplots for each type of damage (property and crop)
+        #Then, plot them side by side using the gridExtra package
+        
+        #Reorder the bars so they will present in descending order:
+        num_prop$EVTYPE = factor(num_prop$EVTYPE, levels = num_prop$EVTYPE[order(-num_prop$PROPDMG)])
+        
+        prop_bp = ggplot(data=num_prop, aes(x = EVTYPE, y = round(PROPDMG/10^9, 2))) +
+                geom_bar(stat="identity") +
+                labs(title = "Property Damage") +
+                labs(x = "Event Type", y = "Amount of Property Damage (in Billions of USD)") +
+                theme(axis.text.x = element_text(size = 7, angle = 45)) + 
+                geom_text(aes(label=round(PROPDMG/10^9, 2)), vjust=-0.3, size=3.5)
+        
+        #Reorder the bars so they will present in descending order:
+        num_CROP$EVTYPE = factor(num_CROP$EVTYPE, levels = num_CROP$EVTYPE[order(-num_CROP$CROPDMG)])
+        
+        crop_bp = ggplot(data=num_CROP, aes(x = EVTYPE, y = round(CROPDMG/10^9, 2))) +
+                geom_bar(stat="identity") +
+                labs(title = "Crop Damage") +
+                labs(x = "Event Type", y = "Amount of Crop Damage (in Billions of USD)") +
+                theme(axis.text.x = element_text(size = 7, angle = 45)) + 
+                geom_text(aes(label=round(CROPDMG/10^9, 2)), vjust=-0.3, size=3.5)
+```
+
+### Figure 2 - Top 10 Events by Economic Impact (1950-2011) ###
+
+```{r sidebyside, fig.width=10, fig.align="center"}
+        #This plots the figures side by side:
+        grid.arrange(prop_bp, crop_bp, nrow = 1)
+                
+```                        
+
+The figure above displays the top ten weather events that lead to the greatest economic impact, defined by the total amount of property damage and total amount of crop damage in US dollars, respectively. Floods are the most costly weather events in regards to property damage and droughts are the most costly weather events in regards to crop damage. However, floods may be the most costly weather event when combining the two types of economic impact. Although droughts ae the most costly weather event in regards to crop damage, they fail to make the top ten in regards to property damage. 

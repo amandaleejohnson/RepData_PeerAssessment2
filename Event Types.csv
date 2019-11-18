@@ -1,0 +1,49 @@
+Event_type,Event_type_cap
+Astronomical Low Tide,ASTRONOMICAL LOW TIDE
+Avalanche,AVALANCHE
+Blizzard,BLIZZARD
+Coastal Flood,COASTAL FLOOD
+Cold/Wind Chill,COLD/WIND CHILL
+Debris Flow,DEBRIS FLOW
+Dense Fog,DENSE FOG
+Dense Smoke,DENSE SMOKE
+Drought,DROUGHT
+Dust Devil,DUST DEVIL
+Dust Storm,DUST STORM
+Excessive Heat,EXCESSIVE HEAT
+Extreme Cold/Wind Chill,EXTREME COLD/WIND CHILL
+Flash Flood,FLASH FLOOD
+Flood,FLOOD
+Frost/Freeze,FROST/FREEZE
+Funnel Cloud,FUNNEL CLOUD
+Freezing Fog,FREEZING FOG
+Hail,HAIL
+Heat,HEAT
+Heavy Rain,HEAVY RAIN
+Heavy Snow,HEAVY SNOW
+High Surf,HIGH SURF
+High Wind,HIGH WIND
+Hurricane (Typhoon),HURRICANE (TYPHOON)
+Ice Storm,ICE STORM
+Lake-Effect Snow,LAKE-EFFECT SNOW
+Lakeshore Flood,LAKESHORE FLOOD
+Lightning,LIGHTNING
+Marine Hail,MARINE HAIL
+Marine High Wind,MARINE HIGH WIND
+Marine Strong Wind,MARINE STRONG WIND
+Marine Thunderstorm Wind,MARINE THUNDERSTORM WIND
+Rip Current,RIP CURRENT
+Seiche,SEICHE
+Sleet,SLEET
+Storm Surge/Tide,STORM SURGE/TIDE
+Strong Wind,STRONG WIND
+Thunderstorm Wind,THUNDERSTORM WIND
+Tornado,TORNADO
+Tropical Depression,TROPICAL DEPRESSION
+Tropical Storm,TROPICAL STORM
+Tsunami,TSUNAMI
+Volcanic Ash,VOLCANIC ASH
+Waterspout,WATERSPOUT
+Wildfire,WILDFIRE
+Winter Storm,WINTER STORM
+Winter Weather,WINTER WEATHER
